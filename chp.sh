@@ -36,8 +36,8 @@ else
   sed -i '' "s/^oauth_provider:.*/oauth_provider: \"$PROVIDER\"/" "$VARS_FILE"
 fi
 
-echo "✅ Provider updated in $VARS_FILE."
-echo "🚀 Running Ansible playbook to deploy changes to the server..."
+echo "Provider updated in $VARS_FILE."
+echo "Running Ansible playbook to deploy changes to the server..."
 
 cd ansible
 ansible-playbook -i inventory/hosts.ini playbook.yml --tags "oauth2"
