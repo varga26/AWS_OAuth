@@ -1,0 +1,15 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:{{ keycloak_version }}
+    container_name: keycloak
+    restart: unless-stopped
+    ports:
+      - "{{ keycloak_port }}:8080"
+    environment:
+      KEYCLOAK_ADMIN: "{{ keycloak_admin_user }}"
+      KEYCLOAK_ADMIN_PASSWORD: "{{ keycloak_admin_password }}"
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY: edge
+      JAVA_OPTS_APPEND: "-Xms256m -Xmx512m"
+    command: start-dev

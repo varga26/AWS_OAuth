@@ -1,0 +1,13 @@
+[Unit]
+Description=OAuth2 Proxy Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart={{ oauth2_proxy_bin_path }} --config={{ oauth2_proxy_config_dir }}/oauth2-proxy.cfg
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

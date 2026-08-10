@@ -1,0 +1,22 @@
+oauth_provider: "keycloak-oidc"
+
+github_oauth_client_id: "Ov23lilpbAOTEI3BpD01"
+
+keycloak_oauth_client_id: "Site"
+
+install_keycloak: true
+keycloak_dir: "/opt/keycloak"
+keycloak_port: 8085
+keycloak_admin_user: "admin"
+keycloak_version: "24.0.5"
+
+keycloak_issuer_url: "http://{{ ansible_host }}:8085/realms/Site"
+
+oauth2_proxy_version: "v7.6.0"
+nginx_http_port: 80
+oauth2_proxy_port: 4180
+backend_app_port: 8080
+
+backend_web_root: "/var/www/backend_app"
+oauth2_proxy_config_dir: "/etc/oauth2-proxy"
+oauth2_proxy_bin_path: "/usr/local/bin/oauth2-proxy"

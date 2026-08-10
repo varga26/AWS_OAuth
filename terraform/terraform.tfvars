@@ -1,0 +1,10 @@
+aws_region    = "us-east-1"
+instance_type = "t3.micro"
+environment   = "prod"
+instance_name = "prod-ubuntu-webserver"
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC+5Q0loiAxeE5ZytoqIQ/ReqgnjesNIxeQ3sdgvrP7v73SiHV38+YliXtnhyzpaB1h2kjBCYrVOn5zthQSCd56AgVf+12p6OrGhWiu1GIFFpRDeN3NNS7Q8vXm5MKj3eR8h7wg6y4ulmrB92CGDjf248FtrWdw8i0HrkSRDLRaIUo2QV8PNCW/+nfXmfsJdBYCtX8ojIFAtH2bOshZ3DAvDrV0Kt1I17YGRVHNbXW3F5mTVuNWKEs4WSdkqwSQlg6isJMSoSSDJSMObN5bbP/VM0zgq6uyYpbrckLPpiw81jEE20oELpnR5/cLeVHRWG/gWrJItB8mFw4c6UH5tYLP vtsyh@4Z5FQL3"
+
+oauth_provider        = "github"
+oauth_client_id       = "Ov23lilpbAOTEI3BpD01"
+oauth_client_secret   = "c90798ff5cb57ef2875ca3ef821fec7bd52d4243"
+oauth_cookie_secret   = "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="

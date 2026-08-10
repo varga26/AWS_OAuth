@@ -1,0 +1,216 @@
+---
+- name: Deploy Nginx Reverse Proxy, oauth2-proxy, Keycloak, and Protected Website
+  hosts: webservers
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/main.yml
+    - vars/secrets.yml
+
+  tasks:
+    
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install required packages (Nginx, Docker, Git, etc.)
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - git
+          - curl
+          - tar
+          - jq
+          - unzip
+          - docker.io
+          - docker-compose-v2
+        state: present
+
+    - name: Ensure Docker service is enabled and running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+      when: install_keycloak | default(false) | bool
+
+    - name: Create Keycloak deployment directory
+      ansible.builtin.file:
+        path: "{{ keycloak_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: install_keycloak | default(false) | bool
+
+    - name: Deploy Keycloak docker-compose.yml
+      ansible.builtin.template:
+        src: templates/docker-compose.yml.j2
+        dest: "{{ keycloak_dir }}/docker-compose.yml"
+        owner: root
+        group: root
+        mode: '0644'
+      when: install_keycloak | default(false) | bool
+      notify: Restart keycloak
+
+    - name: Start Keycloak service via Docker Compose
+      ansible.builtin.command:
+        cmd: docker compose -f {{ keycloak_dir }}/docker-compose.yml up -d
+      register: compose_up
+      changed_when: "'Started' in compose_up.stdout or 'Creating' in compose_up.stdout or 'Recreated' in compose_up.stdout"
+      when: install_keycloak | default(false) | bool
+
+    - name: Disable SSL requirement on Keycloak master realm
+      ansible.builtin.command: >
+        docker exec keycloak /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
+        --server http://localhost:8080
+        --realm master
+        --user {{ keycloak_admin_user }}
+        --password {{ keycloak_admin_password }}
+      register: ssl_disabled
+      retries: 10
+      delay: 6
+      until: ssl_disabled.rc == 0
+      changed_when: ssl_disabled.rc == 0
+      when: install_keycloak | default(false) | bool
+
+    - name: Disable SSL requirement on configured Keycloak realm (e.g. Site)
+      ansible.builtin.command: >
+        docker exec keycloak /opt/keycloak/bin/kcadm.sh update realms/{{ keycloak_issuer_url.split('/')[-1] }} -s sslRequired=NONE
+        --server http://localhost:8080
+        --realm master
+        --user {{ keycloak_admin_user }}
+        --password {{ keycloak_admin_password }}
+      failed_when: false
+      changed_when: false
+      when: install_keycloak | default(false) | bool
+
+    - name: Create backend website directory
+      ansible.builtin.file:
+        path: "{{ backend_web_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Download Pac-Man game from GitHub repository
+      ansible.builtin.git:
+        repo: 'https://github.com/he-is-talha/html-css-javascript-games.git'
+        dest: /tmp/html-games
+        version: main
+        depth: 1
+
+    - name: Deploy Pac-Man game files to web root
+      ansible.builtin.copy:
+        src: /tmp/html-games/02-Pac-Man-Game/
+        dest: "{{ backend_web_root }}/"
+        owner: www-data
+        group: www-data
+        remote_src: true
+
+    - name: Ensure correct permissions recursively on web root
+      ansible.builtin.file:
+        path: "{{ backend_web_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: 'u=rwX,g=rX,o=rX'
+        recurse: true
+
+    - name: Deploy Nginx reverse proxy configuration
+      ansible.builtin.template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/sites-available/default
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart nginx
+
+    - name: Verify Nginx syntax configuration
+      ansible.builtin.command:
+        cmd: nginx -t
+      changed_when: false
+
+    - name: Create oauth2-proxy configuration directory
+      ansible.builtin.file:
+        path: "{{ oauth2_proxy_config_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'
+
+    - name: Download and extract oauth2-proxy binary
+      ansible.builtin.unarchive:
+        src: "https://github.com/oauth2-proxy/oauth2-proxy/releases/download/{{ oauth2_proxy_version }}/oauth2-proxy-{{ oauth2_proxy_version }}.linux-amd64.tar.gz"
+        dest: /tmp/
+        remote_src: true
+        creates: "/tmp/oauth2-proxy-{{ oauth2_proxy_version }}.linux-amd64/oauth2-proxy"
+
+    - name: Move oauth2-proxy binary to system path
+      ansible.builtin.copy:
+        src: "/tmp/oauth2-proxy-{{ oauth2_proxy_version }}.linux-amd64/oauth2-proxy"
+        dest: "{{ oauth2_proxy_bin_path }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0755'
+      notify: Restart oauth2-proxy
+
+    - name: Deploy oauth2-proxy configuration file
+      ansible.builtin.template:
+        src: templates/oauth2-proxy.cfg.j2
+        dest: "{{ oauth2_proxy_config_dir }}/oauth2-proxy.cfg"
+        owner: root
+        group: root
+        mode: '0600'
+      notify: Restart oauth2-proxy
+      tags: ['oauth2']
+
+    - name: Deploy oauth2-proxy systemd service unit
+      ansible.builtin.template:
+        src: templates/oauth2-proxy.service.j2
+        dest: /etc/systemd/system/oauth2-proxy.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Reload systemd
+        - Restart oauth2-proxy
+      tags: ['oauth2']
+
+    - name: Flush handlers to restart services if templates changed
+      ansible.builtin.meta: flush_handlers
+      tags: ['oauth2']
+
+    - name: Ensure Nginx is enabled and running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Ensure oauth2-proxy is enabled and running
+      ansible.builtin.service:
+        name: oauth2-proxy
+        state: started
+        enabled: true
+      tags: ['oauth2']
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+    - name: Restart oauth2-proxy
+      ansible.builtin.service:
+        name: oauth2-proxy
+        state: restarted
+
+    - name: Restart keycloak
+      ansible.builtin.command:
+        cmd: docker compose -f {{ keycloak_dir }}/docker-compose.yml up -d --force-recreate
