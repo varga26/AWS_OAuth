@@ -25,6 +25,7 @@ crash.*.log
 ehthumbs.db
 Thumbs.db
 
-.zip
-.ini
+*.zip
+*.ini
 myenv/
+layer/
