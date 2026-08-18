@@ -24,3 +24,7 @@ crash.*.log
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+.zip
+.ini
+myenv/
