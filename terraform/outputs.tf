@@ -47,3 +47,8 @@ output "public_subnet_id" {
   description = "The ID of the Public Subnet"
   value       = aws_subnet.public.id
 }
+
+output "aws_region" {
+  description = "The AWS region"
+  value       = var.aws_region
+}

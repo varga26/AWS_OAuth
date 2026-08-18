@@ -12,6 +12,7 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
+
 if [ -z "$PROVIDER" ]; then
     echo "Error: You must specify a provider."
     show_help

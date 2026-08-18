@@ -61,3 +61,15 @@ variable "common_tags" {
     Project     = "EC2-WebServer"
   }
 }
+
+variable "alert_email" {
+  description = "Email address to receive site unavailability alerts"
+  type        = string
+  default     = ""
+}
+
+variable "url_to_monitor" {
+  description = "The URL that the Lambda should monitor"
+  type        = string
+  default     = "http://3.237.240.27/"
+}

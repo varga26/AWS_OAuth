@@ -10,6 +10,10 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: "{{ keycloak_admin_password }}"
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
-      KC_PROXY: edge
       JAVA_OPTS_APPEND: "-Xms256m -Xmx512m"
     command: start-dev
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+volumes:
+  keycloak_data:

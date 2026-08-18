@@ -1,6 +1,7 @@
 oauth_provider: "keycloak-oidc"
 
 github_oauth_client_id: "Ov23lilpbAOTEI3BpD01"
+gitlab_oauth_client_id: "2b50e86f555b37d6126e19a2bb1437030b89ebedc434435a3f347811b227a711"
 
 keycloak_oauth_client_id: "Site"
 

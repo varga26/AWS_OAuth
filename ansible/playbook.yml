@@ -75,7 +75,7 @@
       changed_when: ssl_disabled.rc == 0
       when: install_keycloak | default(false) | bool
 
-    - name: Disable SSL requirement on configured Keycloak realm (e.g. Site)
+    - name: Disable SSL requirement on configured Keycloak realm
       ansible.builtin.command: >
         docker exec keycloak /opt/keycloak/bin/kcadm.sh update realms/{{ keycloak_issuer_url.split('/')[-1] }} -s sslRequired=NONE
         --server http://localhost:8080
@@ -84,6 +84,55 @@
         --password {{ keycloak_admin_password }}
       failed_when: false
       changed_when: false
+      when: install_keycloak | default(false) | bool
+
+    - name: Ensure Keycloak realm exists
+      ansible.builtin.shell: >
+        docker exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user {{ keycloak_admin_user }} --password {{ keycloak_admin_password }} &&
+        (docker exec keycloak /opt/keycloak/bin/kcadm.sh create realms -s realm={{ keycloak_issuer_url.split('/')[-1] }} -s enabled=true || true)
+      changed_when: false
+      when: install_keycloak | default(false) | bool
+
+    - name: Ensure Keycloak OIDC client exists
+      ansible.builtin.shell: >
+        docker exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user {{ keycloak_admin_user }} --password {{ keycloak_admin_password }} &&
+        (docker exec keycloak /opt/keycloak/bin/kcadm.sh create clients -r {{ keycloak_issuer_url.split('/')[-1] }} 
+        -s clientId={{ keycloak_oauth_client_id | default(oauth_client_id) }}
+        -s enabled=true
+        -s clientAuthenticatorType=client-secret
+        -s secret={{ keycloak_oauth_client_secret | default(oauth_client_secret) }}
+        -s protocol=openid-connect
+        -s standardFlowEnabled=true
+        -s 'redirectUris=["http://{{ ansible_host }}/oauth2/callback", "http://{{ ansible_host }}/*"]' || true)
+      changed_when: false
+      when: install_keycloak | default(false) | bool
+
+    - name: Configure GitHub Identity Provider in Keycloak
+      ansible.builtin.shell: >
+        docker exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user {{ keycloak_admin_user }} --password {{ keycloak_admin_password }} &&
+        (docker exec keycloak /opt/keycloak/bin/kcadm.sh create identity-provider/instances -r {{ keycloak_issuer_url.split('/')[-1] }}
+        -s alias=github -s providerId=github -s enabled=true
+        -s 'config.clientId="{{ github_oauth_client_id | default(oauth_client_id) }}"'
+        -s 'config.clientSecret="{{ github_oauth_client_secret | default(oauth_client_secret) }}"'
+        || docker exec keycloak /opt/keycloak/bin/kcadm.sh update identity-provider/instances/github -r {{ keycloak_issuer_url.split('/')[-1] }}
+        -s enabled=true
+        -s 'config.clientId="{{ github_oauth_client_id | default(oauth_client_id) }}"'
+        -s 'config.clientSecret="{{ github_oauth_client_secret | default(oauth_client_secret) }}"')
+      changed_when: true
+      when: install_keycloak | default(false) | bool
+
+    - name: Configure GitLab Identity Provider in Keycloak
+      ansible.builtin.shell: >
+        docker exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user {{ keycloak_admin_user }} --password {{ keycloak_admin_password }} &&
+        (docker exec keycloak /opt/keycloak/bin/kcadm.sh create identity-provider/instances -r {{ keycloak_issuer_url.split('/')[-1] }}
+        -s alias=gitlab -s providerId=gitlab -s enabled=true
+        -s 'config.clientId="{{ gitlab_oauth_client_id | default(oauth_client_id) }}"'
+        -s 'config.clientSecret="{{ gitlab_oauth_client_secret | default(oauth_client_secret) }}"'
+        || docker exec keycloak /opt/keycloak/bin/kcadm.sh update identity-provider/instances/gitlab -r {{ keycloak_issuer_url.split('/')[-1] }}
+        -s enabled=true
+        -s 'config.clientId="{{ gitlab_oauth_client_id | default(oauth_client_id) }}"'
+        -s 'config.clientSecret="{{ gitlab_oauth_client_secret | default(oauth_client_secret) }}"')
+      changed_when: true
       when: install_keycloak | default(false) | bool
 
     - name: Create backend website directory
@@ -167,6 +216,16 @@
       notify: Restart oauth2-proxy
       tags: ['oauth2']
 
+    - name: Deploy oauth2-proxy alpha configuration file (YAML)
+      ansible.builtin.template:
+        src: templates/alpha-config.yaml.j2
+        dest: "{{ oauth2_proxy_config_dir }}/alpha-config.yaml"
+        owner: root
+        group: root
+        mode: '0600'
+      notify: Restart oauth2-proxy
+      tags: ['oauth2']
+
     - name: Deploy oauth2-proxy systemd service unit
       ansible.builtin.template:
         src: templates/oauth2-proxy.service.j2
@@ -214,3 +273,4 @@
     - name: Restart keycloak
       ansible.builtin.command:
         cmd: docker compose -f {{ keycloak_dir }}/docker-compose.yml up -d --force-recreate
+

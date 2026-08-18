@@ -1,35 +1,5 @@
-http_address = "127.0.0.1:{{ oauth2_proxy_port }}"
 reverse_proxy = true
-upstreams = [
-    "http://127.0.0.1:{{ backend_app_port }}/"
-]
-
 redirect_url = "http://{{ ansible_host }}/oauth2/callback"
-
-provider = "{{ oauth_provider }}"
-
-{% if oauth_provider == 'github' %}
-client_id = "{{ github_oauth_client_id | default(oauth_client_id) }}"
-client_secret = "{{ github_oauth_client_secret | default(oauth_client_secret) }}"
-scope = "user:email read:org"
-{% elif oauth_provider == 'keycloak-oidc' or oauth_provider == 'keycloak' %}
-client_id = "{{ keycloak_oauth_client_id | default(oauth_client_id) }}"
-client_secret = "{{ keycloak_oauth_client_secret | default(oauth_client_secret) }}"
-oidc_issuer_url = "{{ keycloak_issuer_url }}"
-insecure_oidc_allow_unverified_email = true
-insecure_oidc_skip_issuer_verification = true
-skip_oidc_discovery = true
-login_url = "{{ keycloak_issuer_url }}/protocol/openid-connect/auth"
-redeem_url = "http://127.0.0.1:{{ keycloak_port }}/realms/{{ keycloak_issuer_url.split('/')[-1] }}/protocol/openid-connect/token"
-validate_url = "http://127.0.0.1:{{ keycloak_port }}/realms/{{ keycloak_issuer_url.split('/')[-1] }}/protocol/openid-connect/userinfo"
-oidc_jwks_url = "http://127.0.0.1:{{ keycloak_port }}/realms/{{ keycloak_issuer_url.split('/')[-1] }}/protocol/openid-connect/certs"
-user_id_claim = "preferred_username"
-scope = "openid profile email"
-oidc_extra_audiences = [
-    "account",
-    "{{ keycloak_oauth_client_id | default(oauth_client_id) }}"
-]
-{% endif %}
 
 cookie_secret = "{{ oauth_cookie_secret }}"
 cookie_name = "_oauth2_proxy"
@@ -43,8 +13,4 @@ email_domains = [
     "*"
 ]
 
-pass_user_headers = true
-pass_access_token = true
-pass_authorization_header = true
-set_xauthrequest = true
-skip_provider_button = false
+skip_provider_button = true

@@ -1,0 +1,30 @@
+server:
+  BindAddress: 127.0.0.1:{{ oauth2_proxy_port }}
+
+upstreamConfig:
+  upstreams:
+    - id: backend_app
+      path: /
+      uri: "http://127.0.0.1:{{ backend_app_port }}/"
+
+providers:
+  - provider: oidc
+    id: keycloak-auth
+    name: "Login with Keycloak"
+    clientID: "{{ keycloak_oauth_client_id | default(oauth_client_id) }}"
+    clientSecret: "{{ keycloak_oauth_client_secret | default(oauth_client_secret) }}"
+    scope: "openid profile email"
+    loginURL: "{{ keycloak_issuer_url }}/protocol/openid-connect/auth"
+    redeemURL: "http://127.0.0.1:{{ keycloak_port }}/realms/{{ keycloak_issuer_url.split('/')[-1] }}/protocol/openid-connect/token"
+    profileURL: "http://127.0.0.1:{{ keycloak_port }}/realms/{{ keycloak_issuer_url.split('/')[-1] }}/protocol/openid-connect/userinfo"
+    validateURL: "http://127.0.0.1:{{ keycloak_port }}/realms/{{ keycloak_issuer_url.split('/')[-1] }}/protocol/openid-connect/userinfo"
+    oidcConfig:
+      issuerURL: "{{ keycloak_issuer_url }}"
+      insecureAllowUnverifiedEmail: true
+      insecureSkipIssuerVerification: true
+      skipDiscovery: true
+      jwksURL: "http://127.0.0.1:{{ keycloak_port }}/realms/{{ keycloak_issuer_url.split('/')[-1] }}/protocol/openid-connect/certs"
+      userIDClaim: "preferred_username"
+      emailClaim: "preferred_username"
+      audienceClaims:
+        - "aud"
